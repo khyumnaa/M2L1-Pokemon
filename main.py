@@ -1,39 +1,74 @@
 import discord
 from discord.ext import commands
 from config import token
-from logic import Pokemon
+from logic import Pokemon, Wizard, Fighter
+import random
 
-# Pengaturan intents untuk bot
-intents = discord.Intents.default()  # Mendapatkan pengaturan default
-intents.messages = True              # Mengizinkan bot untuk memproses pesan
-intents.message_content = True       # Mengizinkan bot untuk membaca isi pesan
-intents.guilds = True                # Mengizinkan bot untuk bekerja dengan server (guilds)
-
-# Membuat bot dengan prefix command dan intents yang telah diatur
+intents = discord.Intents.default()
+intents.messages = True
+intents.message_content = True
+intents.guilds = True
 bot = commands.Bot(command_prefix='!', intents=intents)
 
-# Event yang terpicu ketika bot siap bekerja
 @bot.event
 async def on_ready():
-    print(f'Logged in as {bot.user.name}')  # Menampilkan nama bot di console
+    print(f'Logged in as {bot.user.name}')
 
-# Command '!go'
 @bot.command()
 async def go(ctx):
-    author = ctx.author.name  # Mendapatkan nama pengirim pesan
-    # Memeriksa apakah pengguna sudah memiliki pokemon
-    if author not in Pokemon.pokemons.keys():
-        pokemon = Pokemon(author)  # Membuat pokemon baru
-        await ctx.send(await pokemon.info())  # Mengirim informasi pokemon
-        image_url = await pokemon.show_img()  # Mendapatkan URL gambar pokemon
+    author = ctx.author.name
+    if author not in Pokemon.pokemons:
+        chance = random.randint(1, 3)
+        print(chance)
+        if chance == 1:
+            pokemon = Pokemon(author)
+        elif chance == 2:
+            pokemon = Wizard(author)
+        elif chance == 3:
+            pokemon = Fighter(author)
+        await ctx.send(await pokemon.info())
+        image_url = await pokemon.show_img()
         if image_url:
-            embed = discord.Embed()  # Membuat pesan embed
-            embed.set_image(url=image_url)  # Mengatur gambar pokemon
-            await ctx.send(embed=embed)  # Mengirim pesan embed dengan gambar
+            embed = discord.Embed()
+            embed.set_image(url=image_url)
+            await ctx.send(embed=embed)
         else:
             await ctx.send("Tidak dapat memuat gambar pokemon.")
     else:
-        await ctx.send("Kamu sudah memiliki pokemon.")  # Pesan jika pokemon sudah dibuat
+        await ctx.send("Anda sudah memiliki pokemon.")
 
-# Menjalankan bot
+@bot.command()
+async def attack(ctx):
+    target = ctx.message.mentions[0] if ctx.message.mentions else None
+    if target:
+        if target.name in Pokemon.pokemons and ctx.author.name in Pokemon.pokemons:
+            enemy = Pokemon.pokemons[target.name]
+            attacker = Pokemon.pokemons[ctx.author.name]
+            result = await attacker.attack(enemy)
+            await ctx.send(result)
+        else:
+            await ctx.send("Kedua pihak harus memiliki pokemon untuk pertempuran!")
+    else:
+        await ctx.send("Tentukan pengguna yang ingin Anda menyerang, menyebutnya.")
+
+@bot.command()
+async def info(ctx):
+    author = ctx.author.name
+    if author in Pokemon.pokemons:
+        pokemon = Pokemon.pokemons[author]
+        await ctx.send(await pokemon.info())
+    else:
+        await ctx.send("Anda tidak memiliki pokemon!")
+
+@bot.command()
+async def feed(ctx):
+    author = ctx.author.name
+    if author in Pokemon.pokemons:
+        pokemon = Pokemon.pokemons[author]
+        response = await pokemon.feed()
+        await ctx.send(response)
+    else:
+        await ctx.send("Anda tidak memiliki pokemon!")
+
+
 bot.run(token)
